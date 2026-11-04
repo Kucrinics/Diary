@@ -1,3 +1,9 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,45 +13,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Участник семьи (ребёнок/взрослый) со своим цветом
-model Member {
+model User {
   id        String   @id @default(cuid())
-  name      String
-  color     String   @default("#14b8a6")
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
-  tasks     Task[]
-}
-
-// Задача: еженедельная (weekdays "1,3,5") или разовая (date)
-model Task {
-  id        String   @id @default(cuid())
-  title     String
-  note      String   @default("")
-  memberId  String?
-  member    Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
-  time      String   @default("09:00")
-  weekdays  String   @default("")
-  date      String?
-  sound     String?
-  doneDates String   @default("")
+  email     String   @unique
+  name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// Заметка с мягким удалением в корзину
-model Note {
+model Post {
   id        String   @id @default(cuid())
   title     String
-  content   String   @default("")
-  trashed   Boolean  @default(false)
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-// Единственная строка настроек приложения
-model AppSettings {
-  id        String  @id @default("main")
-  sound     String  @default("chime")
-  reminders Boolean @default(true)
 }
