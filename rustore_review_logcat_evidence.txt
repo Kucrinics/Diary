@@ -1,0 +1,80 @@
+Проверка RuStore Review на эмуляторе Pixel 7 (Android 14, API 34, 1080x2400)
+Установленное приложение: release-сборка ru.diary.app v1.7.7 (applicationId = ru.diary.app,
+подпись release-ключом), APK собран из текущих исходников.
+На эмулятор дополнительно установлен RuStore 1.112.0.4 (package ru.vk.store) —
+без него SDK не может показать диалог оценки.
+
+================================================================================
+1. ДЕНЬ 0 (свежая установка, firstInstallTime = 27.10 12:16)
+================================================================================
+Экран согласия -> главный экран.
+Предложения об оценке НЕТ.
+Скриншоты: rustore_review_01..04
+
+================================================================================
+2. ПОРОГ: 2,99 ДНЯ (часы эмулятора 30.10 12:02, install = 27.10 12:16)
+================================================================================
+Приложение открылось на главный экран, диалог оценки НЕ показан (isReviewPromptDue == false).
+Скриншот: rustore_review_05_day2_no_prompt.png
+
+================================================================================
+3. РОВНО 3 ДНЯ (часы эмулятора 02.11 12:45, install = 30.10 12:33 -> 3,01 дня)
+================================================================================
+Предложение об оценке ПОКАЗАНО. В фокусе окно RuStore:
+
+  mCurrentFocus=Window{... u0 ru.vk.store/ru.vk.store.feature.storeapp.review.remote.impl.presentation.AddAppReviewActivity}
+
+UI-дамп диалога:
+  [desc] Rating. 1 star;. Not selected
+  [desc] Rating. 2 stars;. Not selected
+  [desc] Rating. 3 stars;. Not selected
+  [desc] Rating. 4 stars;. Not selected
+  [desc] Rating. 5 stars;. Not selected
+  Review
+  0/500
+  [desc] Send
+  [desc] Close
+
+Logcat:
+  I/ActivityTaskManager: START u0 {cmp=ru.diary.app/ru.rustore.sdk.activitylauncher.RuStoreActivityLauncher (has extras)} with LAUNCH_MULTIPLE from uid 10203 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+  I/ActivityTaskManager: START u0 {act=ru.vk.store.RequestAppReview cmp=ru.vk.store/.feature.storeapp.review.remote.impl.presentation.AddAppReviewActivity (has extras)} with LAUNCH_MULTIPLE from uid 10203 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+  I/ActivityTaskManager: Displayed ru.vk.store/.feature.storeapp.review.remote.impl.presentation.AddAppReviewActivity for user 0: +4s943ms
+
+Скриншот: rustore_review_06_day3_review_dialog.png
+
+================================================================================
+4. ПОВТОРНЫЙ ЗАПУСК (тот же день) — предложения больше НЕТ
+================================================================================
+Флаг review_prompt_shown срабатывает: диалог не показывается повторно.
+Скриншот: rustore_review_09_relaunch_no_prompt.png
+
+================================================================================
+5. КНОПКА "Rate on RuStore" В НАСТРОЙКАХ (повторный запрос SDK)
+================================================================================
+Временное логирование (Log.w "DiaryReview") показало точную ошибку SDK:
+
+  W/DiaryReview( 3129): requestReviewFlow failed
+  W/DiaryReview( 3129): ru.rustore.sdk.review.errors.RuStoreRequestLimitReached: Review request limit reached. Review can't be called too often.
+
+Приложение отработало fallback — открыло приложение RuStore:
+  I/ActivityTaskManager: START u0 {act=android.intent.action.VIEW dat=rustore://apps.rustore.ru/... flg=0x10000000 cmp=ru.vk.store/.app.MainActivity} with LAUNCH_SINGLE_TOP from uid 10203 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+
+Скриншот: rustore_review_10_settings_star_fallback.png
+(на эмуляторе deep link открывает главный экран RuStore, а не карточку приложения)
+
+================================================================================
+6. ОТДЕЛЬНЫЕ НАБЛЮДЕНИЯ
+================================================================================
+a) Повестка "3 дня" считается от firstInstallTime в PackageManager.
+   Для симуляции часы эмулятора двигались через -qemu -rtc base=<дата>:
+     emulator.exe -avd Pixel_7 -no-snapshot-load -qemu -rtc base=2026-11-02T12:45:00
+b) На эмуляторе после смены даты погибает Google Play Services
+   ("Killing ru.diary.app: depends on provider com.google.android.gms/.chimera..."),
+   и вместе с ним убивается процесс приложения. Это артефакт эмулятора, не баг приложения.
+c) ПОДТВЕРЖДЁННЫЙ БАГ логики: markReviewPromptShown() вызывается ДО того,
+   как реально показан диалог. Если процесс приложения погибает в этот момент
+   (пункт b) или SDK возвращает ошибку (RuStoreNotInstalled / RequestLimitReached),
+   флаг всё равно остаётся true и предложение больше никогда не появится.
+   То же касается ветки .addOnFailureListener { } в DiaryApp.kt:169-171 —
+   при отсутствии RuStore у пользователя предложение сгорает молча.
+d) Скриншот диалога: rs_* переименованы в rustore_review_*.

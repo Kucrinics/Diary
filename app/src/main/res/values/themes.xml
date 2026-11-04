@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Базовая тема. Сам UI строится в Compose, поэтому здесь только фон статус-бара
+      и базовые настройки окна. Compose-тема накладывается поверх в DiaryTheme.
+    -->
+    <style name="Theme.Diary" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/purple_main</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Виджет задач (тёмная тема) -->
+    <color name="widget_bg">#FF211C18</color>
+    <color name="widget_header">#FFE9DED3</color>
+    <color name="widget_text">#FFE9DED3</color>
+    <color name="widget_time">#FFB7A79A</color>
+    <color name="widget_divider">#FF3A322B</color>
+    <color name="widget_accent">#FFD4A04A</color>
+    <color name="widget_completed">#FF7A6E64</color>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFFFF</color>
+</resources>

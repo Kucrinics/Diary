@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="purple_light">#FFD0BCFF</color>
+    <color name="purple_main">#FF6750A4</color>
+    <color name="purple_dark">#FF4F378B</color>
+
+    <!-- Заглушка для статус-бара/сплэша. Основные цвета задаются в Compose-теме. -->
+    <color name="ic_launcher_background">#FFFFFFFF</color>
+
+    <!-- Виджет задач (светлая тема) -->
+    <color name="widget_bg">#FFF8F3EE</color>
+    <color name="widget_header">#FF4E4248</color>
+    <color name="widget_text">#FF4E4248</color>
+    <color name="widget_time">#FF8B8188</color>
+    <color name="widget_divider">#FFE3DCCF</color>
+    <color name="widget_accent">#FFD4A04A</color>
+    <color name="widget_completed">#FFB5A99A</color>
+</resources>

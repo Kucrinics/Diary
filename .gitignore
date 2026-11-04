@@ -1,54 +1,40 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Gradle
+.gradle/
+build/
 
-# dependencies
-node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Android Studio / IntelliJ
+.idea/
+local.properties
+*.iml
+.cxx/
 
-# testing
-/coverage
+# Собранные артефакты
+*.apk
+*.aab
+*.ap_
+*.dex
 
-# next.js
-/.next/
-/out/
+# Keystore — НИКОГДА не коммитить!
+*.jks
+*.keystore
+keystore.properties
+diary-key-backup/
+diary-key-backup.zip
+diary-release.jks
 
-# production
-/build
-
-# misc
+# OS
 .DS_Store
-*.pem
+Thumbs.db
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-local-*
-.claude
-.z-ai-config
+# --- Добавлено при размещении в репозитории песочницы ---
+# бэкап ключа подписи: в git не должен попадать НИКОГДА (как и .jks)
+diary-key-backup.zip
+# локальный дистрибутив Gradle и кеш Kotlin
+gradle-8.9-bin.zip
+.kotlin/
 *.log
-dev.log
-dev.out.log
-test
-prompt
-
-server.log
-# Skills directory
+# системные каталоги песочницы
 /skills/
+/upload/
+# APK в каталоге выдачи — только для скачивания, в git не храним
+/download/*.apk
