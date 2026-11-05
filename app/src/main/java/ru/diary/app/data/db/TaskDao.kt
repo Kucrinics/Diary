@@ -24,6 +24,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE date BETWEEN :startDate AND :endDate AND is_deleted = 0 AND is_draft = 0 ORDER BY date ASC, time IS NULL, time ASC, sort_order ASC, id ASC")
     fun observeTasksBetween(startDate: String, endDate: String): Flow<List<Task>>
 
+    /** Все активные задачи (не удалённые, не черновики) — для агрегатов календаря. */
+    @Query("SELECT * FROM tasks WHERE is_deleted = 0 AND is_draft = 0 ORDER BY date ASC, time IS NULL, time ASC, sort_order ASC, id ASC")
+    fun observeAllActive(): Flow<List<Task>>
+
     /** Все задачи (для перепланирования напоминаний после перезагрузки). */
     @Query("SELECT * FROM tasks WHERE remind = 1 AND is_completed = 0 AND is_deleted = 0 AND is_draft = 0")
     suspend fun getAllPendingReminders(): List<Task>

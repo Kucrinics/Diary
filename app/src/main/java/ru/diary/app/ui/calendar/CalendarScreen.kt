@@ -1,6 +1,7 @@
 package ru.diary.app.ui.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -138,6 +140,8 @@ fun CalendarScreen(
                 month = state.month,
                 busyDates = state.busyDates,
                 importantDates = state.importantDates,
+                dayMarkers = state.dayMarkers,
+                dayColors = state.dayColors,
                 today = LocalDate.now(),
                 onDateClick = { date -> onDateSelected(DateUtils.toIsoDate(date)) }
             )
@@ -201,6 +205,8 @@ private fun MonthGrid(
     month: YearMonth,
     busyDates: Set<String>,
     importantDates: Set<String>,
+    dayMarkers: Map<String, List<Boolean>>,
+    dayColors: Map<String, Int>,
     today: LocalDate,
     onDateClick: (LocalDate) -> Unit
 ) {
@@ -223,11 +229,14 @@ private fun MonthGrid(
                     Box(modifier = Modifier.weight(1f)) {
                         if (dayNum in 1..daysInMonth) {
                             val date = month.atDay(dayNum)
+                            val iso = DateUtils.toIsoDate(date)
                             DayCell(
                                 date = date,
                                 isToday = date == today,
-                                isBusy = DateUtils.toIsoDate(date) in busyDates,
-                                isImportant = DateUtils.toIsoDate(date) in importantDates,
+                                isBusy = iso in busyDates,
+                                isImportant = iso in importantDates,
+                                markers = dayMarkers[iso].orEmpty(),
+                                dayColor = dayColors[iso],
                                 onClick = { onDateClick(date) }
                             )
                         }
@@ -244,6 +253,8 @@ private fun DayCell(
     isToday: Boolean,
     isBusy: Boolean,
     isImportant: Boolean,
+    markers: List<Boolean>,
+    dayColor: Int?,
     onClick: () -> Unit
 ) {
     val todayLabel = stringResource(R.string.tasks_today)
@@ -259,6 +270,17 @@ private fun DayCell(
         else if (isBusy) append(", ").append(busyLabel)
     }
 
+    // Маркеры дня: звезда — важная задача, точка — обычная.
+    // Если агрегатов нет (старые данные), откатываемся к прежнему поведению.
+    val flags = markers.ifEmpty {
+        buildList {
+            when {
+                isImportant -> add(true)
+                isBusy -> add(false)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -269,38 +291,66 @@ private fun DayCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        val circleColor = dayColor?.let { Color(it) }
         Box(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    color = if (isToday) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    color = when {
+                        circleColor != null -> circleColor
+                        isToday -> MaterialTheme.colorScheme.primary
+                        else -> Color.Transparent
+                    },
                     shape = CircleShape
+                )
+                .then(
+                    // Сегодняшний день выделяем рамкой, если он перекрашен задачами.
+                    if (circleColor != null && isToday) {
+                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    } else {
+                        Modifier
+                    }
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = date.dayOfMonth.toString(),
-                color = if (isToday) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                color = when {
+                    // Число контрастно фону круга, залитого цветом задачи.
+                    circleColor != null ->
+                        if (circleColor.luminance() > 0.5f) Color.Black else Color.White
+                    isToday -> MaterialTheme.colorScheme.onPrimary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
                 style = MaterialTheme.typography.bodyLarge
             )
         }
         Spacer(Modifier.height(2.dp))
-        if (isImportant) {
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        } else if (isBusy) {
-            Box(
-                modifier = Modifier
-                    .size(5.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.secondary,
-                        shape = CircleShape
-                    )
-            )
+        if (flags.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                flags.forEach { important ->
+                    if (important) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                }
+            }
         }
     }
 }

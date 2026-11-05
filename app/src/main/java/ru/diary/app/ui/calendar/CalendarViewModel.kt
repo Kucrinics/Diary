@@ -15,10 +15,30 @@ import ru.diary.app.data.repository.NoteRepository
 import ru.diary.app.data.repository.TaskRepository
 import java.time.YearMonth
 
+/** Максимум маркеров (точек/звёзд) на один день календаря. */
+private const val MAX_MARKERS = 3
+
 data class CalendarUiState(
     val month: YearMonth = YearMonth.now(),
     val busyDates: Set<String> = emptySet(),
-    val importantDates: Set<String> = emptySet()
+    val importantDates: Set<String> = emptySet(),
+    /**
+     * Маркеры дня: до [MAX_MARKERS] элементов на дату.
+     * true — важная задача (звезда), false — обычная (точка).
+     * Важные идут первыми, чтобы звёзды не терялись при обрезке до 3.
+     */
+    val dayMarkers: Map<String, List<Boolean>> = emptyMap(),
+    /** Цвет дня (ARGB): цвет первой цветной задачи этой даты. */
+    val dayColors: Map<String, Int> = emptyMap()
+)
+
+/** Данные, не зависящие от выбранного месяца (SQL сам фильтрует удалённые и черновики). */
+private data class CalendarData(
+    val busyDates: List<String>,
+    val importantTaskDates: List<String>,
+    val importantNoteDates: List<String>,
+    val templates: List<Task>,
+    val allTasks: List<Task>
 )
 
 class CalendarViewModel(
@@ -28,21 +48,55 @@ class CalendarViewModel(
 
     private val _month = MutableStateFlow(YearMonth.now())
 
-    val state: StateFlow<CalendarUiState> = combine(
-        _month,
+    private val data = combine(
         taskRepository.observeDatesWithTasks(),
         taskRepository.observeDatesWithImportantTasks(),
         noteRepository.observeDatesWithImportantNotes(),
-        taskRepository.observeRecurringTemplates()
-    ) { month, busy, importantTasks, importantNotes, templates ->
-        val allBusy = busy.toMutableSet()
-        val allImportant = (importantTasks.toSet() + importantNotes.toSet()).toMutableSet()
-        templates.forEach { template ->
+        taskRepository.observeRecurringTemplates(),
+        taskRepository.observeAll()
+    ) { busy, importantTasks, importantNotes, templates, tasks ->
+        CalendarData(busy, importantTasks, importantNotes, templates, tasks)
+    }
+
+    val state: StateFlow<CalendarUiState> = combine(_month, data) { month, d ->
+        val allBusy = d.busyDates.toMutableSet()
+        val allImportant = (d.importantTaskDates.toSet() + d.importantNoteDates.toSet()).toMutableSet()
+
+        // Задачи по дням: маркеры важности и первый цвет дня.
+        val markers = HashMap<String, MutableList<Boolean>>()
+        val colors = HashMap<String, Int>()
+        d.allTasks.forEach { task ->
+            markers.getOrPut(task.date) { mutableListOf() }.add(task.isImportant)
+            if (task.color != null && !colors.containsKey(task.date)) {
+                colors[task.date] = task.color
+            }
+        }
+
+        // Повторяющиеся шаблоны: добавляем вхождения в отображаемом месяце.
+        d.templates.forEach { template ->
             val dates = recurringDatesInMonth(template, month)
             allBusy.addAll(dates)
             if (template.isImportant) allImportant.addAll(dates)
+            dates.forEach { iso ->
+                markers.getOrPut(iso) { mutableListOf() }.add(template.isImportant)
+                if (template.color != null && !colors.containsKey(iso)) {
+                    colors[iso] = template.color
+                }
+            }
         }
-        CalendarUiState(month, allBusy, allImportant)
+
+        // Важные заметки тоже дают звезду, как и раньше.
+        d.importantNoteDates.forEach { iso ->
+            markers.getOrPut(iso) { mutableListOf() }.add(true)
+        }
+
+        // Важные первыми, не больше 3 маркеров на день:
+        // 1 задача — 1 маркер, 2 — 2, 3 и больше — 3.
+        val cappedMarkers = markers.mapValues { (_, flags) ->
+            (flags.filter { it } + flags.filter { !it }).take(MAX_MARKERS)
+        }
+
+        CalendarUiState(month, allBusy, allImportant, cappedMarkers, colors)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000L),

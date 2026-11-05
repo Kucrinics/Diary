@@ -42,6 +42,9 @@ class TaskRepository(private val dao: TaskDao) {
 
     fun observeDatesWithTasks(): Flow<List<String>> = dao.observeDatesWithTasks()
 
+    /** Все активные задачи (не удалённые, не черновики) — для агрегатов календаря. */
+    fun observeAll(): Flow<List<Task>> = dao.observeAllActive()
+
     fun observeDatesWithImportantTasks(): Flow<List<String>> = dao.observeDatesWithImportantTasks()
 
     suspend fun getOverdueAutoMoveTasks(today: String): List<Task> = dao.getOverdueAutoMoveTasks(today)
