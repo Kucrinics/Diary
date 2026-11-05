@@ -108,6 +108,14 @@ keyPassword=ВАШ_ПАРОЛЬ
 **Build → Generate Signed Bundle / APK → APK → release → Finish.**
 
 Готовый файл: `app/build/outputs/apk/release/app-release.apk`.
+### 4. Отпечаток релизного ключа
+Сертификат подписи, SHA-256:
+```
+e21cc5a330164264db51b78a5c99cf990221c849d40c3b47182fe71f3ad002ac
+```
+Этим ключом подписаны версии в RuStore (начиная с 1.7.8). Файл ключа:
+`diary-release.jks` (alias `diary-key`) — хранится вне репозитория, бэкап обязателен.
+
 
 ---
 
