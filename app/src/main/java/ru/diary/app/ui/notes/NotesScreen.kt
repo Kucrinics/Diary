@@ -208,7 +208,12 @@ fun NotesScreen(
                                                 Modifier.fillMaxSize().background(color).padding(horizontal = 20.dp),
                                                 contentAlignment = Alignment.CenterEnd
                                             ) {
-                                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                                                // Показываем иконку только во время свайпа,
+                                                // иначе белая корзина просвечивает сквозь прозрачный
+                                                // фон строки в тёмной теме (выглядит как задвоение).
+                                                if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                                                }
                                             }
                                         },
                                         enableDismissFromStartToEnd = false

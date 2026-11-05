@@ -152,20 +152,6 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            ReminderSoundSection(
-                value = reminderSound,
-                onSelect = { picked ->
-                    settingsManager.setReminderSound(picked)
-                    // У канала уведомлений звук фиксируется при создании,
-                    // поэтому после смены мелодии пересоздаём канал.
-                    NotificationHelper.createChannel(context)
-                }
-            )
-
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(12.dp))
-
             Text(
                 text = stringResource(R.string.settings_widget),
                 style = MaterialTheme.typography.titleSmall.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize),
@@ -199,6 +185,20 @@ fun SettingsScreen(
             SettingsHint(text = stringResource(R.string.settings_rate_hint))
             Spacer(Modifier.height(8.dp))
             RateStars()
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+
+            ReminderSoundSection(
+                value = reminderSound,
+                onSelect = { picked ->
+                    settingsManager.setReminderSound(picked)
+                    // У канала уведомлений звук фиксируется при создании,
+                    // поэтому после смены мелодии пересоздаём канал.
+                    NotificationHelper.createChannel(context)
+                }
+            )
 
             Spacer(Modifier.height(12.dp))
             HorizontalDivider()
