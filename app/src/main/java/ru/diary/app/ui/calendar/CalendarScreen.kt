@@ -1,7 +1,6 @@
 package ru.diary.app.ui.calendar
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -291,41 +289,30 @@ private fun DayCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        val circleColor = dayColor?.let { Color(it) }
         Box(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    color = when {
-                        circleColor != null -> circleColor
-                        isToday -> MaterialTheme.colorScheme.primary
-                        else -> Color.Transparent
-                    },
+                    color = if (isToday) MaterialTheme.colorScheme.primary else Color.Transparent,
                     shape = CircleShape
-                )
-                .then(
-                    // Сегодняшний день выделяем рамкой, если он перекрашен задачами.
-                    if (circleColor != null && isToday) {
-                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                    } else {
-                        Modifier
-                    }
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = date.dayOfMonth.toString(),
-                color = when {
-                    // Число контрастно фону круга, залитого цветом задачи.
-                    circleColor != null ->
-                        if (circleColor.luminance() > 0.5f) Color.Black else Color.White
-                    isToday -> MaterialTheme.colorScheme.onPrimary
-                    else -> MaterialTheme.colorScheme.onSurface
+                color = if (isToday) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
                 },
                 style = MaterialTheme.typography.bodyLarge
             )
         }
         Spacer(Modifier.height(2.dp))
+        // Цвет задачи красит маркеры (точки/звёзды), а не круг с датой:
+        // в дне есть цветная задача — её цвет получают все маркеры этого дня.
+        // Если цветных задач нет — маркеры остаются в стандартных цветах темы.
+        val markerColor = dayColor?.let { Color(it) }
         if (flags.isNotEmpty()) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -337,14 +324,14 @@ private fun DayCell(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
                             modifier = Modifier.size(10.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = markerColor ?: MaterialTheme.colorScheme.primary
                         )
                     } else {
                         Box(
                             modifier = Modifier
                                 .size(5.dp)
                                 .background(
-                                    color = MaterialTheme.colorScheme.secondary,
+                                    color = markerColor ?: MaterialTheme.colorScheme.secondary,
                                     shape = CircleShape
                                 )
                         )
