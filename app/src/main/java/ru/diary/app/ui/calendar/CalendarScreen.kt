@@ -139,7 +139,6 @@ fun CalendarScreen(
                 busyDates = state.busyDates,
                 importantDates = state.importantDates,
                 dayMarkers = state.dayMarkers,
-                dayColors = state.dayColors,
                 today = LocalDate.now(),
                 onDateClick = { date -> onDateSelected(DateUtils.toIsoDate(date)) }
             )
@@ -203,8 +202,7 @@ private fun MonthGrid(
     month: YearMonth,
     busyDates: Set<String>,
     importantDates: Set<String>,
-    dayMarkers: Map<String, List<Boolean>>,
-    dayColors: Map<String, Int>,
+    dayMarkers: Map<String, List<CalendarMarker>>,
     today: LocalDate,
     onDateClick: (LocalDate) -> Unit
 ) {
@@ -234,7 +232,6 @@ private fun MonthGrid(
                                 isBusy = iso in busyDates,
                                 isImportant = iso in importantDates,
                                 markers = dayMarkers[iso].orEmpty(),
-                                dayColor = dayColors[iso],
                                 onClick = { onDateClick(date) }
                             )
                         }
@@ -251,8 +248,7 @@ private fun DayCell(
     isToday: Boolean,
     isBusy: Boolean,
     isImportant: Boolean,
-    markers: List<Boolean>,
-    dayColor: Int?,
+    markers: List<CalendarMarker>,
     onClick: () -> Unit
 ) {
     val todayLabel = stringResource(R.string.tasks_today)
@@ -273,8 +269,8 @@ private fun DayCell(
     val flags = markers.ifEmpty {
         buildList {
             when {
-                isImportant -> add(true)
-                isBusy -> add(false)
+                isImportant -> add(CalendarMarker(isImportant = true, color = null))
+                isBusy -> add(CalendarMarker(isImportant = false, color = null))
             }
         }
     }
@@ -309,29 +305,28 @@ private fun DayCell(
             )
         }
         Spacer(Modifier.height(2.dp))
-        // Цвет задачи красит маркеры (точки/звёзды), а не круг с датой:
-        // в дне есть цветная задача — её цвет получают все маркеры этого дня.
-        // Если цветных задач нет — маркеры остаются в стандартных цветах темы.
-        val markerColor = dayColor?.let { Color(it) }
+        // Каждый маркер красится в цвет своей задачи;
+        // у задач без цвета — стандартные цвета темы.
         if (flags.isNotEmpty()) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                flags.forEach { important ->
-                    if (important) {
+                flags.forEach { marker ->
+                    val tint = marker.color?.let { Color(it) }
+                    if (marker.isImportant) {
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
                             modifier = Modifier.size(10.dp),
-                            tint = markerColor ?: MaterialTheme.colorScheme.primary
+                            tint = tint ?: MaterialTheme.colorScheme.primary
                         )
                     } else {
                         Box(
                             modifier = Modifier
                                 .size(5.dp)
                                 .background(
-                                    color = markerColor ?: MaterialTheme.colorScheme.secondary,
+                                    color = tint ?: MaterialTheme.colorScheme.secondary,
                                     shape = CircleShape
                                 )
                         )

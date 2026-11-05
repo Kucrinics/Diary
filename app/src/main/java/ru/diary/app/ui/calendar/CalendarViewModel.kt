@@ -18,18 +18,24 @@ import java.time.YearMonth
 /** Максимум маркеров (точек/звёзд) на один день календаря. */
 private const val MAX_MARKERS = 3
 
+/**
+ * Маркер дня в календаре: точка (обычная задача) или звезда (важная),
+ * окрашенный в цвет своей задачи; null — стандартный цвет темы.
+ */
+data class CalendarMarker(
+    val isImportant: Boolean,
+    val color: Int?
+)
+
 data class CalendarUiState(
     val month: YearMonth = YearMonth.now(),
     val busyDates: Set<String> = emptySet(),
     val importantDates: Set<String> = emptySet(),
     /**
      * Маркеры дня: до [MAX_MARKERS] элементов на дату.
-     * true — важная задача (звезда), false — обычная (точка).
      * Важные идут первыми, чтобы звёзды не терялись при обрезке до 3.
      */
-    val dayMarkers: Map<String, List<Boolean>> = emptyMap(),
-    /** Цвет дня (ARGB): цвет первой цветной задачи этой даты. */
-    val dayColors: Map<String, Int> = emptyMap()
+    val dayMarkers: Map<String, List<CalendarMarker>> = emptyMap()
 )
 
 /** Данные, не зависящие от выбранного месяца (SQL сам фильтрует удалённые и черновики). */
@@ -62,14 +68,11 @@ class CalendarViewModel(
         val allBusy = d.busyDates.toMutableSet()
         val allImportant = (d.importantTaskDates.toSet() + d.importantNoteDates.toSet()).toMutableSet()
 
-        // Задачи по дням: маркеры важности и первый цвет дня.
-        val markers = HashMap<String, MutableList<Boolean>>()
-        val colors = HashMap<String, Int>()
+        // Задачи по дням: каждый маркер хранит важность и цвет своей задачи.
+        val markers = HashMap<String, MutableList<CalendarMarker>>()
         d.allTasks.forEach { task ->
-            markers.getOrPut(task.date) { mutableListOf() }.add(task.isImportant)
-            if (task.color != null && !colors.containsKey(task.date)) {
-                colors[task.date] = task.color
-            }
+            markers.getOrPut(task.date) { mutableListOf() }
+                .add(CalendarMarker(task.isImportant, task.color))
         }
 
         // Повторяющиеся шаблоны: добавляем вхождения в отображаемом месяце.
@@ -78,25 +81,23 @@ class CalendarViewModel(
             allBusy.addAll(dates)
             if (template.isImportant) allImportant.addAll(dates)
             dates.forEach { iso ->
-                markers.getOrPut(iso) { mutableListOf() }.add(template.isImportant)
-                if (template.color != null && !colors.containsKey(iso)) {
-                    colors[iso] = template.color
-                }
+                markers.getOrPut(iso) { mutableListOf() }
+                    .add(CalendarMarker(template.isImportant, template.color))
             }
         }
 
         // Важные заметки тоже дают звезду, как и раньше.
         d.importantNoteDates.forEach { iso ->
-            markers.getOrPut(iso) { mutableListOf() }.add(true)
+            markers.getOrPut(iso) { mutableListOf() }.add(CalendarMarker(true, null))
         }
 
         // Важные первыми, не больше 3 маркеров на день:
         // 1 задача — 1 маркер, 2 — 2, 3 и больше — 3.
-        val cappedMarkers = markers.mapValues { (_, flags) ->
-            (flags.filter { it } + flags.filter { !it }).take(MAX_MARKERS)
+        val cappedMarkers = markers.mapValues { (_, items) ->
+            (items.filter { it.isImportant } + items.filter { !it.isImportant }).take(MAX_MARKERS)
         }
 
-        CalendarUiState(month, allBusy, allImportant, cappedMarkers, colors)
+        CalendarUiState(month, allBusy, allImportant, cappedMarkers)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000L),
