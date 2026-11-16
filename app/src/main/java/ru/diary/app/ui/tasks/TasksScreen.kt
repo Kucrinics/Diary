@@ -88,6 +88,7 @@ import ru.diary.app.data.model.RepeatType
 import ru.diary.app.data.model.Task
 import ru.diary.app.data.repository.TaskRepository
 import ru.diary.app.notifications.AlarmScheduler
+import ru.diary.app.notifications.NotificationHelper
 import ru.diary.app.widget.TasksWidgetProvider
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -113,6 +114,11 @@ fun TasksScreen(
 
     LaunchedEffect(Unit) {
         vm.onTasksChanged = { TasksWidgetProvider.refresh(appContext) }
+        // Завершение/удаление задачи из приложения тоже глушит напоминание:
+        // убираем уведомление из шторки и останавливаем звук.
+        vm.onReminderCancelled = { ids ->
+            NotificationHelper.cancelReminder(appContext, ids.filter { it > 0 }.map { it.toInt() })
+        }
     }
 
     LaunchedEffect(initialDate) {

@@ -60,6 +60,18 @@ object NotificationHelper {
         return channel.sound == null || channel.importance <= NotificationManager.IMPORTANCE_LOW
     }
 
+    /**
+     * Пользователь отреагировал на напоминание (завершил или удалил задачу):
+     * убираем уведомление из шторки и глушим звук. Для повторяющихся задач
+     * уведомление могло быть опубликовано под id шаблона или id вхождения,
+     * поэтому отменяем все переданные кандидаты (отмена несуществующего — no-op).
+     */
+    fun cancelReminder(context: Context, ids: Collection<Int>) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        ids.forEach { id -> if (id > 0) manager?.cancel(id) }
+        ReminderSoundPlayer.stopAll()
+    }
+
     @SuppressLint("WrongConstant")
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

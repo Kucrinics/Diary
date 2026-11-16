@@ -74,6 +74,18 @@ class TasksViewModel(
     /** Колбэк, вызываемый при изменениях задач (обновление виджета). */
     var onTasksChanged: (() -> Unit)? = null
 
+    /**
+     * Колбэк, вызываемый, когда пользователь завершил или удалил задачу:
+     * наружу отдаются все возможные id напоминания (шаблон/вхождение),
+     * чтобы убрать уведомление из шторки и остановить звук. Проводится
+     * в TasksScreen через NotificationHelper.cancelReminder.
+     */
+    var onReminderCancelled: ((List<Long>) -> Unit)? = null
+
+    private fun cancelReminderFor(ids: List<Long>) {
+        onReminderCancelled?.invoke(ids)
+    }
+
     private fun notifyWidget() {
         onTasksChanged?.invoke()
     }
@@ -283,7 +295,7 @@ class TasksViewModel(
                 val templateId = TaskOccurrences.templateIdOf(task.id) ?: return@launch
                 val template = repository.getById(templateId) ?: return@launch
                 repository.deleteGeneratedInstanceAt(templateId, currentDate)
-                repository.add(
+                val completedId = repository.add(
                     template.copy(
                         id = 0,
                         date = currentDate,
@@ -310,11 +322,13 @@ class TasksViewModel(
                 if (template.remind && nextId != null && nextDate != null) {
                     alarmScheduler.schedule(nextId.toInt(), template.title, nextDate, template.time)
                 }
+                // Задача завершена — уведомление из шторки и звук больше не нужны.
+                cancelReminderFor(listOf(templateId, completedId))
             } else {
                 val taskInDb = repository.getById(task.id) ?: return@launch
                 if (taskInDb.repeatType != RepeatType.NONE.value && taskInDb.repeatOriginId == null) {
                     repository.deleteGeneratedInstanceAt(taskInDb.id, taskInDb.date)
-                    repository.add(
+                    val completedId = repository.add(
                         taskInDb.copy(
                             id = 0,
                             date = taskInDb.date,
@@ -341,12 +355,14 @@ class TasksViewModel(
                     if (taskInDb.remind && nextId != null && nextDate != null) {
                         alarmScheduler.schedule(nextId.toInt(), taskInDb.title, nextDate, taskInDb.time)
                     }
+                    cancelReminderFor(listOf(task.id, completedId))
                 } else {
                     repository.setCompleted(task.id, !task.isCompleted)
                     alarmScheduler.cancel(task.id.toInt())
                     if (task.isCompleted && taskInDb.remind) {
                         alarmScheduler.schedule(task.id.toInt(), taskInDb.title, taskInDb.date, taskInDb.time)
                     }
+                    cancelReminderFor(listOf(task.id))
                 }
             }
             notifyWidget()
@@ -514,17 +530,20 @@ class TasksViewModel(
                 repository.deleteGeneratedInstances(templateId)
                 repository.update(template.copy(isDeleted = true, deletedAt = System.currentTimeMillis()))
                 alarmScheduler.cancel(templateId.toInt())
+                cancelReminderFor(listOf(templateId))
             } else {
                 val real = repository.getById(task.id) ?: return@launch
                 if (real.repeatType == RepeatType.NONE.value && real.repeatOriginId == null) {
                     repository.update(real.copy(isDeleted = true, deletedAt = System.currentTimeMillis()))
                     alarmScheduler.cancel(task.id.toInt())
+                    cancelReminderFor(listOf(task.id))
                 } else {
                     val originId = real.repeatOriginId ?: real.id
                     repository.deleteGeneratedInstances(originId)
                     val origin = repository.getById(originId) ?: return@launch
                     repository.update(origin.copy(isDeleted = true, deletedAt = System.currentTimeMillis()))
                     alarmScheduler.cancel(originId.toInt())
+                    cancelReminderFor(listOf(real.id, originId))
                 }
             }
             notifyWidget()

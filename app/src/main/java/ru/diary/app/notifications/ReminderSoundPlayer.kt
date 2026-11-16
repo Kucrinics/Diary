@@ -108,7 +108,8 @@ object ReminderSoundPlayer {
         // «Без звука» в приложении): тогда собственный плеер тоже молчит, иначе
         // «убранный» звук продолжал бы играть в обход канала на громкости будильника.
         if (NotificationHelper.isChannelSoundDisabled(context)) return
-        if (playingForId == taskId && player?.isPlaying == true) return
+        val alreadyPlaying = runCatching { player?.isPlaying }.getOrDefault(false) == true
+        if (playingForId == taskId && alreadyPlaying) return
         stopInternal()
 
         val uri: Uri = soundUri(context) ?: return
@@ -124,6 +125,10 @@ object ReminderSoundPlayer {
                 setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
                 setDataSource(context, uri)
                 setOnPreparedListener { mp ->
+                    // Если пока шла подготовка, звук успели остановить (свайп,
+                    // «Скрыть», завершение задачи) — стартовать нельзя, иначе
+                    // мелодия заиграет уже после остановки и её уже не остановить.
+                    if (player !== mp) return@setOnPreparedListener
                     // Стартуем с «догоняющего» участка, чтобы не повторять звук,
                     // который уже отыграл канал, и уложиться в общий лимит.
                     if (startOffsetMs > 0L) {
@@ -134,9 +139,12 @@ object ReminderSoundPlayer {
                     }
                     mp.start()
                 }
-                setOnCompletionListener { stopInternal() }
-                setOnErrorListener { listener, _, _ ->
+                setOnCompletionListener { mp ->
+                    if (player !== mp) return@setOnCompletionListener
                     stopInternal()
+                }
+                setOnErrorListener { mp, _, _ ->
+                    if (player === mp) stopInternal()
                     true
                 }
             }
@@ -158,6 +166,7 @@ object ReminderSoundPlayer {
         // чтобы в конце участок отыграл ещё раз и уже был заглушён затуханием.
         media.isLooping = false
         media.setOnCompletionListener { mp ->
+            if (player !== mp) return@setOnCompletionListener
             if (startOffsetMs > 0L && SystemClock.elapsedRealtime() < fadeEndsAtMs) {
                 try {
                     mp.seekTo(0)
@@ -181,16 +190,32 @@ object ReminderSoundPlayer {
         stopInternal()
     }
 
+    /**
+     * Останавливает звук в любом случае — независимо от id задачи.
+     * Используется, когда пользователь отреагировал на напоминание
+     * (завершил или удалил задачу), и неясно, под каким id оно звучало.
+     */
+    fun stopAll() {
+        stopInternal()
+    }
+
     private fun stopInternal() {
         handler.removeCallbacks(fadeTick)
         val current = player
         player = null
         playingForId = -1
+        // stop() и release() отдельно: если stop() бросил исключение
+        // (плеер ещё готовился), release() всё равно обязан выполниться,
+        // иначе звук продолжит играть без остановки из stop()/stopAll().
         try {
             current?.stop()
+        } catch (_: Exception) {
+            // плеер не был запущен (Preparing/Idle/Error) — не страшно
+        }
+        try {
             current?.release()
         } catch (_: Exception) {
-            // уже освобождён или не был инициализирован
+            // уже освобождён
         }
     }
 }
