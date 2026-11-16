@@ -47,6 +47,19 @@ object NotificationHelper {
         return "${CHANNEL_ID_PREFIX}_$suffix"
     }
 
+    /**
+     * Отключён ли звук канала на уровне системы: пользователь мог убрать звук
+     * в настройках Android (звук канала = «Без звука» или понижена важность).
+     * Приложение не должно обойти такое отключение собственным плеером —
+     * иначе «убранный» звук продолжает играть при каждом напоминании.
+     */
+    fun isChannelSoundDisabled(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return false
+        val channel = manager.getNotificationChannel(channelId(context)) ?: return false
+        return channel.sound == null || channel.importance <= NotificationManager.IMPORTANCE_LOW
+    }
+
     @SuppressLint("WrongConstant")
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -8,11 +8,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import ru.diary.app.DiaryApp
+import ru.diary.app.data.TaskAutoMove
 import ru.diary.app.data.db.DateUtils
 import ru.diary.app.data.model.RepeatType
 import ru.diary.app.data.model.RecurrenceUtils
 import ru.diary.app.data.model.Task
 import ru.diary.app.data.repository.TaskRepository
+import ru.diary.app.widget.TasksWidgetProvider
 
 /**
  * После перезагрузки устройства AlarmManager сбрасывается.
@@ -29,10 +31,19 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val container = DiaryApp.instance.container
                 val scheduler = AlarmScheduler(context)
+                // Автоперенос просроченных задач — до перепланирования напоминаний,
+                // чтобы будильники вставали уже на новые (сегодняшние) даты.
+                val moved = TaskAutoMove.moveOverdue(container.taskRepository, scheduler)
                 val now = System.currentTimeMillis()
                 container.taskRepository.getPendingReminders().forEach { task ->
                     armReminder(container.taskRepository, scheduler, task, now)
                 }
+                if (moved) {
+                    TasksWidgetProvider.refresh(context.applicationContext)
+                }
+                // Будильники сбрасываются при перезагрузке — возобновляем и
+                // полуночное обновление виджета/автопереноса.
+                DailyRefreshReceiver.scheduleNext(context.applicationContext)
             } finally {
                 pending.finish()
             }

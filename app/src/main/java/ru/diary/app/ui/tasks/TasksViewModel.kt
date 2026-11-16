@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
+import ru.diary.app.data.TaskAutoMove
 import ru.diary.app.data.db.DateUtils
 import ru.diary.app.data.model.RecurrenceUtils
 import ru.diary.app.data.model.RepeatType
@@ -621,19 +622,10 @@ class TasksViewModel(
     }
 
     private suspend fun performAutoMove() {
-        val today = DateUtils.today()
         // Шаблон повторяющейся серии нельзя переносить: его дата — якорь,
-        // от которого считаются все вхождения.
-        val overdue = repository.getOverdueAutoMoveTasks(today)
-            .filter { it.repeatType == RepeatType.NONE.value }
-        overdue.forEach { task ->
-            repository.moveToDate(task.id, today)
-            alarmScheduler.cancel(task.id.toInt())
-            if (task.remind) {
-                alarmScheduler.schedule(task.id.toInt(), task.title, today, task.time)
-            }
-        }
-        if (overdue.isNotEmpty()) {
+        // от которого считаются все вхождения. Общая логика — в TaskAutoMove,
+        // её же выполняет полуночное DailyRefreshReceiver, когда приложение закрыто.
+        if (TaskAutoMove.moveOverdue(repository, alarmScheduler)) {
             notifyWidget()
             forceRefresh()
         }

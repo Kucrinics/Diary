@@ -11,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import ru.diary.app.backup.BackupManager
 import ru.diary.app.di.AppContainer
+import ru.diary.app.notifications.DailyRefreshReceiver
 import ru.diary.app.notifications.NotificationHelper
 
 /**
@@ -52,6 +53,11 @@ class DiaryApp : Application() {
         // Канал уведомлений создаём сразу при старте процесса, иначе на Android 8+
         // уведомление о задаче молча отбрасывается (нет канала -> нет показа и звука).
         NotificationHelper.createChannel(this)
+
+        // Полуночное обновление: автоперенос задач на новый день и перерисовка
+        // виджета. Будильник сбрасывается при перезагрузке и обновлении пакета —
+        // восстанавливаем его при каждом старте процесса.
+        DailyRefreshReceiver.scheduleNext(this)
     }
 
     @Volatile

@@ -105,6 +105,9 @@ fun TaskDialog(
     var isImportant by rememberSaveable { mutableStateOf(initial?.isImportant ?: false) }
     var isDraft by rememberSaveable { mutableStateOf(initial?.isDraft ?: defaultIsDraft) }
     var autoMove by rememberSaveable { mutableStateOf(initial?.autoMove ?: false) }
+    // null — переключатель «Напомнить» не трогали: напоминание ведёт себя как раньше
+    // (включено, когда у задачи есть время). Значение после ручного переключения.
+    var remindOverride by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var repeatType by rememberSaveable { mutableStateOf(initial?.repeatType ?: RepeatType.NONE.value) }
     var repeatIntervalDays by rememberSaveable { mutableStateOf(initial?.repeatIntervalDays?.toString() ?: "") }
     var repeatDaysOfWeek by rememberSaveable { mutableStateOf(initial?.repeatDaysOfWeek ?: 0) }
@@ -119,6 +122,7 @@ fun TaskDialog(
     fun performSave() {
         val finalTime = time.trim().ifBlank { null }
         val endDate = repeatEndDate.trim().ifBlank { null }
+        val remind = remindOverride ?: (finalTime != null)
         val intervalDays = if (repeatType == RepeatType.INTERVAL.value) {
             repeatIntervalDays.toIntOrNull()?.takeIf { it > 0 } ?: 1
         } else {
@@ -139,7 +143,7 @@ fun TaskDialog(
             finalTime,
             initial?.categoryId,
             color,
-            finalTime != null,
+            remind,
             isImportant,
             autoMove,
             repeatType,
@@ -186,8 +190,7 @@ fun TaskDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val finalTime = time.trim().ifBlank { null }
-                    val hasReminder = finalTime != null
+                    val hasReminder = remindOverride ?: (time.isNotBlank())
                     if (hasReminder) {
                         requestNotificationPermissionAndSave()
                     } else {
@@ -331,6 +334,18 @@ fun TaskDialog(
                         },
                         title = { Text(stringResource(R.string.task_field_time)) },
                         text = { TimePicker(state = timePickerState) }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.task_remind))
+                    Switch(
+                        checked = remindOverride ?: time.isNotBlank(),
+                        onCheckedChange = { remindOverride = it }
                     )
                 }
 

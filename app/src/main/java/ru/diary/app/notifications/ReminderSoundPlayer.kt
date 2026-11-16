@@ -104,6 +104,10 @@ object ReminderSoundPlayer {
             ?: Settings.System.DEFAULT_ALARM_ALERT_URI
 
     private fun startInternal(context: Context, taskId: Int, startOffsetMs: Long) {
+        // Пользователь мог отключить звук канала в настройках системы (или выбрать
+        // «Без звука» в приложении): тогда собственный плеер тоже молчит, иначе
+        // «убранный» звук продолжал бы играть в обход канала на громкости будильника.
+        if (NotificationHelper.isChannelSoundDisabled(context)) return
         if (playingForId == taskId && player?.isPlaying == true) return
         stopInternal()
 
